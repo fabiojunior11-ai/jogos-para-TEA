@@ -1,0 +1,1092 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VozAmiga - Comunicação Alternativa e Jogo</title>
+    <!-- Carregando Tailwind CSS para layout responsivo e utilitários -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Carregando fonte arredondada e acolhedora 'Nunito' do Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Estilos personalizados amigáveis ao autismo (sem flashes, transições suaves, baixo contraste agressivo) */
+        :root {
+            --bg-cream: #F7F9F8;
+            --text-soft: #2D3748;
+            --text-muted: #5A6778;
+            --border-soft: #E2E8F0;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: var(--bg-cream);
+            color: var(--text-soft);
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+
+        /* Paleta Pastel Suave por Categoria */
+        .card-inicio {
+            background-color: #EBF4FF;
+            border-color: #BFDBFE;
+        }
+        .card-comida {
+            background-color: #ECFDF5;
+            border-color: #A7F3D0;
+        }
+        .card-sentimentos {
+            background-color: #FEF9C3;
+            border-color: #FDE047;
+        }
+        .card-acoes {
+            background-color: #FFF1F2;
+            border-color: #FECDD3;
+        }
+        .card-pessoas {
+            background-color: #F3E8FF;
+            border-color: #DDD6FE;
+        }
+
+        /* Feedback tátil e visual suave para botões e cartões */
+        .aac-card {
+            transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, background-color 0.2s ease;
+            border-width: 3px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+        }
+
+        .aac-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.06);
+        }
+
+        .aac-card:active {
+            transform: scale(0.96);
+        }
+
+        /* Destaque gentil quando o cartão está sendo falado */
+        .speaking-highlight {
+            transform: scale(1.05) !important;
+            box-shadow: 0 0 0 5px #93C5FD, 0 10px 20px rgba(0, 0, 0, 0.08) !important;
+            z-index: 10;
+        }
+
+        /* Scrollbar suave para a barra de frases e categorias */
+        .custom-scroll::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        .custom-scroll::-webkit-scrollbar-track {
+            background: #EDF2F7;
+            border-radius: 10px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb {
+            background: #CBD5E0;
+            border-radius: 10px;
+        }
+        .custom-scroll::-webkit-scrollbar-thumb:hover {
+            background: #A0AEC0;
+        }
+
+        /* Animação gentil para entrada de elementos */
+        @keyframes softFadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-soft-in {
+            animation: softFadeIn 0.25s ease-out forwards;
+        }
+
+        /* Estilo do botão com progresso de clique longo para área dos pais */
+        .hold-btn-progress {
+            position: relative;
+            overflow: hidden;
+        }
+        .hold-btn-progress::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: var(--hold-progress, 0%);
+            background-color: rgba(147, 197, 253, 0.35);
+            transition: width 0.05s linear;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+    <!-- CABEÇALHO PRINCIPAL: Alternância de Modos e Acesso Pais/Terapeutas -->
+    <header class="bg-white/90 backdrop-blur-sm border-b-2 border-slate-200/80 sticky top-0 z-30 px-3 py-3 sm:px-6">
+        <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+            
+            <!-- Identidade Visual Acolhedora -->
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-sky-100 border-2 border-sky-200 flex items-center justify-center text-2xl shadow-sm" aria-hidden="true">
+                    🌈
+                </div>
+                <div>
+                    <h1 class="text-xl sm:text-2xl font-extrabold text-slate-700 tracking-tight leading-none">VozAmiga</h1>
+                    <p class="text-xs sm:text-sm text-slate-500 font-semibold mt-0.5">Comunicação & Brincadeira</p>
+                </div>
+            </div>
+
+            <!-- Botões Centrais de Alternância de Modo (Comunicar vs Brincar/Jogo) -->
+            <nav class="flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200/80 shadow-inner" aria-label="Modos do aplicativo">
+                <button id="btn-mode-aac" onclick="switchMode('aac')" 
+                    class="flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-extrabold text-base sm:text-lg transition-all bg-white text-sky-700 shadow-sm border border-sky-200">
+                    <span class="text-xl">💬</span>
+                    <span>Comunicar</span>
+                </button>
+                <button id="btn-mode-game" onclick="switchMode('game')" 
+                    class="flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-extrabold text-base sm:text-lg transition-all text-slate-600 hover:text-slate-800">
+                    <span class="text-xl">🧩</span>
+                    <span>Brincar</span>
+                </button>
+            </nav>
+
+            <!-- Botão Modo Pais / Terapeutas (Protegido por clique longo de 1.2s ou duplo toque para evitar saída acidental da criança) -->
+            <div class="flex items-center gap-2">
+                <button id="btn-parent-gate" 
+                    title="Segure por 1 segundo para abrir configurações e adicionar cartões"
+                    class="hold-btn-progress flex items-center gap-2 px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl bg-slate-100 hover:bg-slate-200/70 border-2 border-slate-200 text-slate-600 font-bold text-sm sm:text-base transition-colors">
+                    <span class="text-lg">⚙️</span>
+                    <span class="hidden md:inline">Pais / Novo Cartão</span>
+                    <span class="md:hidden">Ajustes</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- NOTIFICAÇÃO FLUTUANTE SUAVE (Substitui qualquer uso de alert()) -->
+    <div id="toast-container" class="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 pointer-events-none transition-all duration-300 opacity-0 translate-y-4">
+        <div id="toast-message" class="bg-slate-700 text-white px-6 py-3.5 rounded-2xl shadow-lg font-bold text-base sm:text-lg flex items-center gap-2.5 border-2 border-slate-600">
+            <span id="toast-icon">✨</span>
+            <span id="toast-text">Mensagem</span>
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         SEÇÃO 1: MODO COMUNICAR (PRANCHA DE COMUNICAÇÃO ALTERNATIVA - CAA)
+         ===================================================================== -->
+    <main id="view-aac" class="flex-1 max-w-6xl w-full mx-auto px-3 py-4 sm:px-6 sm:py-5 flex flex-col gap-4">
+        
+        <!-- BARRA SUPERIOR DE CONSTRUÇÃO DE FRASES -->
+        <section aria-label="Barra de frase construída" class="bg-white rounded-3xl border-2 border-slate-200 p-3 sm:p-4 shadow-sm flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+            
+            <!-- Área de exibição dos cartões selecionados -->
+            <div id="sentence-strip" 
+                class="flex-1 min-h-[96px] sm:min-h-[112px] bg-slate-50/90 rounded-2xl border-2 border-dashed border-slate-300 p-2.5 flex items-center gap-2.5 overflow-x-auto custom-scroll">
+                <div id="sentence-placeholder" class="w-full text-center text-slate-400 font-bold text-base sm:text-lg px-4">
+                    Toque nos cartões abaixo para montar sua frase...
+                </div>
+            </div>
+
+            <!-- Botões de Ação da Barra de Frases (Grandes e fáceis de tocar) -->
+            <div class="grid grid-cols-3 lg:flex items-center gap-2.5 shrink-0">
+                <button onclick="speakFullSentence()" 
+                    class="col-span-1 lg:w-auto flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 bg-emerald-100 hover:bg-emerald-200/80 active:scale-95 text-emerald-900 border-2 border-emerald-300 font-extrabold px-4 py-3.5 sm:px-6 sm:py-5 rounded-2xl transition-all shadow-sm">
+                    <span class="text-2xl sm:text-3xl">🔊</span>
+                    <span class="text-sm sm:text-lg leading-tight text-center">FALAR FRASE</span>
+                </button>
+
+                <button onclick="removeLastWord()" 
+                    class="col-span-1 lg:w-auto flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 bg-amber-100 hover:bg-amber-200/80 active:scale-95 text-amber-900 border-2 border-amber-300 font-extrabold px-3 py-3.5 sm:px-5 sm:py-5 rounded-2xl transition-all shadow-sm">
+                    <span class="text-2xl sm:text-3xl">⌫</span>
+                    <span class="text-sm sm:text-base leading-tight text-center">APAGAR</span>
+                </button>
+
+                <button onclick="clearSentence()" 
+                    class="col-span-1 lg:w-auto flex flex-col sm:flex-row items-center justify-center gap-1.5 sm:gap-2 bg-rose-100 hover:bg-rose-200/80 active:scale-95 text-rose-900 border-2 border-rose-300 font-extrabold px-3 py-3.5 sm:px-5 sm:py-5 rounded-2xl transition-all shadow-sm">
+                    <span class="text-2xl sm:text-3xl">🗑️</span>
+                    <span class="text-sm sm:text-base leading-tight text-center">LIMPAR</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- FILTROS POR CATEGORIAS (Abas Grandes e Coloridas) -->
+        <section aria-label="Categorias de cartões" class="flex items-center gap-2.5 overflow-x-auto custom-scroll pb-1">
+            <button onclick="filterCategory('todos')" data-cat="todos"
+                class="cat-tab shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl font-extrabold text-base sm:text-lg border-2 transition-all bg-slate-700 text-white border-slate-700 shadow-sm">
+                <span>🌟</span>
+                <span>Todos</span>
+            </button>
+            <button onclick="filterCategory('inicio')" data-cat="inicio"
+                class="cat-tab shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl font-extrabold text-base sm:text-lg border-2 transition-all bg-blue-50 text-blue-900 border-blue-200 hover:bg-blue-100">
+                <span>💬</span>
+                <span>Início / Eu</span>
+            </button>
+            <button onclick="filterCategory('comida')" data-cat="comida"
+                class="cat-tab shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl font-extrabold text-base sm:text-lg border-2 transition-all bg-emerald-50 text-emerald-900 border-emerald-200 hover:bg-emerald-100">
+                <span>🍎</span>
+                <span>Comida e Bebida</span>
+            </button>
+            <button onclick="filterCategory('sentimentos')" data-cat="sentimentos"
+                class="cat-tab shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl font-extrabold text-base sm:text-lg border-2 transition-all bg-yellow-50 text-yellow-900 border-yellow-200 hover:bg-yellow-100">
+                <span>😊</span>
+                <span>Sentimentos</span>
+            </button>
+            <button onclick="filterCategory('acoes')" data-cat="acoes"
+                class="cat-tab shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl font-extrabold text-base sm:text-lg border-2 transition-all bg-rose-50 text-rose-900 border-rose-200 hover:bg-rose-100">
+                <span>🏃</span>
+                <span>Ações</span>
+            </button>
+            <button onclick="filterCategory('pessoas')" data-cat="pessoas"
+                class="cat-tab shrink-0 flex items-center gap-2 px-5 py-3 rounded-2xl font-extrabold text-base sm:text-lg border-2 transition-all bg-purple-50 text-purple-900 border-purple-200 hover:bg-purple-100">
+                <span>🏡</span>
+                <span>Pessoas e Lugares</span>
+            </button>
+        </section>
+
+        <!-- GRADE DE CARTÕES DE COMUNICAÇÃO -->
+        <section aria-label="Cartões de comunicação" class="flex-1">
+            <div id="cards-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3.5 sm:gap-4 pb-8">
+                <!-- Os cartões são renderizados dinamicamente via JavaScript -->
+            </div>
+        </section>
+    </main>
+
+    <!-- =====================================================================
+         SEÇÃO 2: MODO BRINCAR / JOGO EDUCATIVO ("ONDE ESTÁ?")
+         ===================================================================== -->
+    <main id="view-game" class="hidden flex-1 max-w-5xl w-full mx-auto px-4 py-5 sm:px-6 sm:py-6 flex flex-col items-center justify-between gap-5">
+        
+        <!-- Cabeçalho do Jogo: Placar de Estrelinhas Suaves e Dificuldade -->
+        <div class="w-full bg-white rounded-3xl border-2 border-slate-200 p-4 sm:px-6 flex flex-wrap items-center justify-between gap-4 shadow-sm">
+            <div class="flex items-center gap-3">
+                <div class="w-12 h-12 rounded-2xl bg-amber-100 border-2 border-amber-200 flex items-center justify-center text-2xl">
+                    ⭐
+                </div>
+                <div>
+                    <span class="text-xs sm:text-sm font-bold text-slate-400 uppercase tracking-wider">Estrelinhas</span>
+                    <div class="flex items-center gap-2">
+                        <span id="game-score" class="text-2xl sm:text-3xl font-extrabold text-slate-700">0</span>
+                        <div id="stars-visual" class="flex items-center gap-1 text-lg"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seletor de Quantidade de Opções (3 ou 4 cartões) -->
+            <div class="flex items-center gap-2 bg-slate-100 p-1.5 rounded-2xl border border-slate-200">
+                <span class="text-xs sm:text-sm font-bold text-slate-500 px-2">Opções:</span>
+                <button onclick="setGameDifficulty(3)" id="diff-3" class="px-3.5 py-1.5 rounded-xl font-extrabold text-sm bg-white text-sky-700 shadow-sm border border-sky-200">3 Cartões</button>
+                <button onclick="setGameDifficulty(4)" id="diff-4" class="px-3.5 py-1.5 rounded-xl font-extrabold text-sm text-slate-600">4 Cartões</button>
+            </div>
+        </div>
+
+        <!-- Área da Pergunta e Botão Ouvir de Novo -->
+        <div class="w-full bg-sky-50/90 rounded-3xl border-2 border-sky-200 p-5 sm:p-7 text-center flex flex-col items-center gap-4 shadow-sm">
+            <p class="text-base sm:text-lg font-bold text-sky-800/80 uppercase tracking-wide">Escute com atenção:</p>
+            <h2 id="game-prompt-text" class="text-2xl sm:text-4xl font-extrabold text-slate-800">
+                Onde está... Água?
+            </h2>
+            <button onclick="repeatGamePrompt()" 
+                class="mt-1 flex items-center gap-3 bg-white hover:bg-sky-100/70 active:scale-95 text-sky-800 border-2 border-sky-300 font-extrabold text-lg sm:text-xl px-7 py-4 rounded-2xl shadow-sm transition-all">
+                <span class="text-2xl sm:text-3xl">🔊</span>
+                <span>Ouvir de Novo</span>
+            </button>
+        </div>
+
+        <!-- Feedback Gentil da Rodada -->
+        <div id="game-feedback-banner" class="w-full min-h-[60px] flex items-center justify-center">
+            <p id="game-feedback-text" class="text-lg sm:text-2xl font-extrabold text-center text-slate-600 px-4 py-2 rounded-2xl transition-all">
+                Toque no cartão correspondente!
+            </p>
+        </div>
+
+        <!-- Grade de Opções do Jogo -->
+        <div id="game-options-grid" class="w-full grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pb-6">
+            <!-- Opções geradas via JavaScript -->
+        </div>
+    </main>
+
+    <!-- =====================================================================
+         MODAL: MODO PAIS / TERAPEUTAS (Personalização de Cartões e Voz)
+         ===================================================================== -->
+    <div id="parent-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white rounded-3xl border-2 border-slate-200 max-w-2xl w-full p-5 sm:p-7 shadow-xl animate-soft-in my-auto max-h-[90vh] overflow-y-auto custom-scroll">
+            
+            <div class="flex items-center justify-between border-b-2 border-slate-100 pb-4 mb-5">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">🛠️</span>
+                    <div>
+                        <h2 class="text-xl sm:text-2xl font-extrabold text-slate-800">Área de Pais e Terapeutas</h2>
+                        <p class="text-sm text-slate-500 font-semibold">Personalize cartões e ajuste a voz do aplicativo</p>
+                    </div>
+                </div>
+                <button onclick="closeParentModal()" class="w-11 h-11 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-extrabold text-xl flex items-center justify-center">
+                    ✕
+                </button>
+            </div>
+
+            <!-- Aba 1: Criar Novo Cartão -->
+            <div class="bg-slate-50 rounded-2xl p-4 sm:p-5 border-2 border-slate-200/80 mb-6">
+                <h3 class="text-lg font-extrabold text-slate-700 mb-3 flex items-center gap-2">
+                    <span>➕</span> Adicionar Novo Cartão
+                </h3>
+                
+                <form id="add-card-form" onsubmit="handleAddCard(event)" class="space-y-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <!-- Palavra / Texto -->
+                        <div class="sm:col-span-2">
+                            <label for="new-card-word" class="block text-sm font-bold text-slate-600 mb-1">Palavra ou Frase Curta</label>
+                            <input type="text" id="new-card-word" required maxlength="25" placeholder="Ex: Abraço, Tablet, Suco de Uva..."
+                                class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white font-bold text-slate-700 focus:outline-none focus:border-sky-400">
+                        </div>
+
+                        <!-- Ícone / Emoji -->
+                        <div>
+                            <label for="new-card-emoji" class="block text-sm font-bold text-slate-600 mb-1">Emoji / Ícone</label>
+                            <input type="text" id="new-card-emoji" required maxlength="4" value="🤗"
+                                class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white font-bold text-2xl text-center focus:outline-none focus:border-sky-400">
+                        </div>
+                    </div>
+
+                    <!-- Sugestões rápidas de emojis -->
+                    <div>
+                        <span class="block text-xs font-bold text-slate-500 mb-1.5">Sugestões rápidas (clique para escolher):</span>
+                        <div class="flex flex-wrap gap-2" id="emoji-suggestions">
+                            <!-- Preenchido via JS -->
+                        </div>
+                    </div>
+
+                    <!-- Categoria e Cor Pastel -->
+                    <div>
+                        <label for="new-card-category" class="block text-sm font-bold text-slate-600 mb-1">Categoria e Cor Pastel</label>
+                        <select id="new-card-category" 
+                            class="w-full px-4 py-3 rounded-xl border-2 border-slate-200 bg-white font-bold text-slate-700 focus:outline-none focus:border-sky-400">
+                            <option value="inicio">💬 Início / Eu (Azul Pastel)</option>
+                            <option value="comida">🍎 Comida e Bebida (Verde Menta)</option>
+                            <option value="sentimentos">😊 Sentimentos (Amarelo Suave)</option>
+                            <option value="acoes">🏃 Ações (Pêssego / Rosa Claro)</option>
+                            <option value="pessoas">🏡 Pessoas e Lugares (Lilás Suave)</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" 
+                        class="w-full bg-sky-500 hover:bg-sky-600 active:scale-98 text-white font-extrabold text-lg py-3.5 rounded-2xl shadow-sm transition-all">
+                        Salvar Novo Cartão
+                    </button>
+                </form>
+            </div>
+
+            <!-- Aba 2: Configurações de Voz (Web Speech API) -->
+            <div class="bg-slate-50 rounded-2xl p-4 sm:p-5 border-2 border-slate-200/80 mb-6">
+                <h3 class="text-lg font-extrabold text-slate-700 mb-3 flex items-center gap-2">
+                    <span>🗣️</span> Configurações da Voz (Português)
+                </h3>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="voice-select" class="block text-sm font-bold text-slate-600 mb-1">Voz do Sistema</label>
+                        <select id="voice-select" onchange="saveVoiceSettings()"
+                            class="w-full px-3 py-2.5 rounded-xl border-2 border-slate-200 bg-white font-bold text-sm text-slate-700">
+                            <option value="">Padrão Português (Brasil)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="voice-rate" class="block text-sm font-bold text-slate-600 mb-1">
+                            Velocidade da Fala: <span id="rate-label" class="text-sky-700">0.9x (Calma)</span>
+                        </label>
+                        <input type="range" id="voice-rate" min="0.6" max="1.2" step="0.05" value="0.9" oninput="updateRateLabel()" onchange="saveVoiceSettings()"
+                            class="w-full accent-sky-500 h-2.5 bg-slate-200 rounded-lg cursor-pointer mt-2">
+                    </div>
+                </div>
+
+                <button type="button" onclick="speakText('Olá! Eu sou a sua voz amiga. Vamos conversar?')"
+                    class="mt-3 px-4 py-2 rounded-xl bg-white border-2 border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-sm flex items-center gap-2">
+                    <span>🔊</span> Testar Voz Agora
+                </button>
+            </div>
+
+            <!-- Aba 3: Gerenciar Cartões Personalizados -->
+            <div>
+                <h3 class="text-lg font-extrabold text-slate-700 mb-2 flex items-center gap-2">
+                    <span>🗂️</span> Cartões Personalizados Criados
+                </h3>
+                <div id="custom-cards-list" class="space-y-2 max-h-48 overflow-y-auto custom-scroll pr-1">
+                    <!-- Lista de cartões criados pelo usuário -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- =====================================================================
+         LÓGICA JAVASCRIPT (Sintetizador de Voz, CAA, LocalStorage e Jogo)
+         ===================================================================== -->
+    <script>
+        // 1. DADOS INICIAIS DOS CARTÕES (Rico e organizado por categorias)
+        const DEFAULT_CARDS = [
+            // Início / Eu
+            { id: 'def-1', word: 'Eu quero', emoji: '🙋', category: 'inicio', isCustom: false },
+            { id: 'def-2', word: 'Não quero', emoji: '🙅', category: 'inicio', isCustom: false },
+            { id: 'def-3', word: 'Sim', emoji: '👍', category: 'inicio', isCustom: false },
+            { id: 'def-4', word: 'Não', emoji: '👎', category: 'inicio', isCustom: false },
+            { id: 'def-5', word: 'Por favor', emoji: '🙏', category: 'inicio', isCustom: false },
+            { id: 'def-6', word: 'Obrigado', emoji: '🥰', category: 'inicio', isCustom: false },
+            { id: 'def-7', word: 'Ajuda', emoji: '🆘', category: 'inicio', isCustom: false },
+
+            // Comida e Bebida
+            { id: 'def-8', word: 'Água', emoji: '💧', category: 'comida', isCustom: false },
+            { id: 'def-9', word: 'Comida', emoji: '🍽️', category: 'comida', isCustom: false },
+            { id: 'def-10', word: 'Suco', emoji: '🧃', category: 'comida', isCustom: false },
+            { id: 'def-11', word: 'Fruta', emoji: '🍌', category: 'comida', isCustom: false },
+            { id: 'def-12', word: 'Leite', emoji: '🥛', category: 'comida', isCustom: false },
+            { id: 'def-13', word: 'Biscoito', emoji: '🍪', category: 'comida', isCustom: false },
+
+            // Sentimentos
+            { id: 'def-14', word: 'Feliz', emoji: '😄', category: 'sentimentos', isCustom: false },
+            { id: 'def-15', word: 'Triste', emoji: '😢', category: 'sentimentos', isCustom: false },
+            { id: 'def-16', word: 'Cansado', emoji: '😴', category: 'sentimentos', isCustom: false },
+            { id: 'def-17', word: 'Com dor', emoji: '🤕', category: 'sentimentos', isCustom: false },
+            { id: 'def-18', word: 'Com medo', emoji: '😨', category: 'sentimentos', isCustom: false },
+            { id: 'def-19', word: 'Calmo', emoji: '😌', category: 'sentimentos', isCustom: false },
+
+            // Ações
+            { id: 'def-20', word: 'Brincar', emoji: '🧸', category: 'acoes', isCustom: false },
+            { id: 'def-21', word: 'Dormir', emoji: '🛏️', category: 'acoes', isCustom: false },
+            { id: 'def-22', word: 'Banheiro', emoji: '🚽', category: 'acoes', isCustom: false },
+            { id: 'def-23', word: 'Assistir', emoji: '📺', category: 'acoes', isCustom: false },
+            { id: 'def-24', word: 'Passear', emoji: '🌳', category: 'acoes', isCustom: false },
+            { id: 'def-25', word: 'Parar', emoji: '✋', category: 'acoes', isCustom: false },
+
+            // Pessoas e Lugares
+            { id: 'def-26', word: 'Mamãe', emoji: '👩', category: 'pessoas', isCustom: false },
+            { id: 'def-27', word: 'Papai', emoji: '👨', category: 'pessoas', isCustom: false },
+            { id: 'def-28', word: 'Casa', emoji: '🏠', category: 'pessoas', isCustom: false },
+            { id: 'def-29', word: 'Escola', emoji: '🏫', category: 'pessoas', isCustom: false }
+        ];
+
+        const SUGGESTED_EMOJIS = ['🤗', '⚽', '🎨', '📚', '🎵', '🛁', '👕', '👟', '🍎', '🍞', '🍕', '🍦', '🐶', '🐱', '🚗', '📱', '❤️', '🌞'];
+
+        // Estado Global do Aplicativo
+        let allCards = [];
+        let sentenceList = [];
+        let currentCategory = 'todos';
+        let currentMode = 'aac'; // 'aac' ou 'game'
+
+        // Estado de Voz
+        let availableVoices = [];
+        let selectedVoiceURI = '';
+        let speechRate = 0.9;
+
+        // Estado do Jogo
+        let gameScore = 0;
+        let gameDifficulty = 3;
+        let currentTargetCard = null;
+        let currentGameOptions = [];
+        let isRoundTransitioning = false;
+
+        // 2. INICIALIZAÇÃO AO CARREGAR A PÁGINA
+        window.onload = function() {
+            loadFromStorage();
+            initSpeechSynthesis();
+            setupParentHoldButton();
+            renderEmojiSuggestions();
+            renderCardsGrid();
+            updateSentenceStrip();
+        };
+
+        // Carrega cartões personalizados e preferências do localStorage
+        function loadFromStorage() {
+            try {
+                const savedCustom = localStorage.getItem('vozamiga_custom_cards');
+                const customCards = savedCustom ? JSON.parse(savedCustom) : [];
+                allCards = [...DEFAULT_CARDS, ...customCards];
+
+                const savedRate = localStorage.getItem('vozamiga_speech_rate');
+                if (savedRate) {
+                    speechRate = parseFloat(savedRate);
+                    document.getElementById('voice-rate').value = speechRate;
+                    updateRateLabel();
+                }
+
+                const savedVoice = localStorage.getItem('vozamiga_voice_uri');
+                if (savedVoice) {
+                    selectedVoiceURI = savedVoice;
+                }
+            } catch (err) {
+                console.error('Erro ao carregar dados salvos:', err);
+                allCards = [...DEFAULT_CARDS];
+            }
+        }
+
+        function saveCustomCardsToStorage() {
+            try {
+                const customOnly = allCards.filter(c => c.isCustom);
+                localStorage.setItem('vozamiga_custom_cards', JSON.stringify(customOnly));
+            } catch (err) {
+                showToast('Não foi possível salvar no navegador.', '⚠️');
+            }
+        }
+
+        // 3. SINTETIZADOR DE VOZ (WEB SPEECH API - pt-BR)
+        function initSpeechSynthesis() {
+            if (!('speechSynthesis' in window)) {
+                showToast('Seu navegador não suporta síntese de voz.', '⚠️');
+                return;
+            }
+
+            const populateVoices = () => {
+                const voices = window.speechSynthesis.getVoices();
+                // Prioriza vozes em Português (pt-BR e pt)
+                const ptVoices = voices.filter(v => v.lang.toLowerCase().includes('pt'));
+                availableVoices = ptVoices.length > 0 ? ptVoices : voices;
+
+                const voiceSelect = document.getElementById('voice-select');
+                voiceSelect.innerHTML = '<option value="">Voz Padrão (Português Brasil)</option>';
+
+                availableVoices.forEach(voice => {
+                    const opt = document.createElement('option');
+                    opt.value = voice.voiceURI;
+                    opt.textContent = `${voice.name} (${voice.lang})`;
+                    if (voice.voiceURI === selectedVoiceURI) {
+                        opt.selected = true;
+                    }
+                    voiceSelect.appendChild(opt);
+                });
+            };
+
+            populateVoices();
+            if (window.speechSynthesis.onvoiceschanged !== undefined) {
+                window.speechSynthesis.onvoiceschanged = populateVoices;
+            }
+        }
+
+        function speakText(text, onEndCallback = null) {
+            if (!('speechSynthesis' in window)) {
+                if (onEndCallback) onEndCallback();
+                return;
+            }
+
+            try {
+                // Cancela fala anterior para evitar fila travada
+                window.speechSynthesis.cancel();
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'pt-BR';
+                utterance.rate = speechRate;
+                utterance.pitch = 1.05; // Tom levemente acolhedor
+
+                if (selectedVoiceURI) {
+                    const matchedVoice = availableVoices.find(v => v.voiceURI === selectedVoiceURI);
+                    if (matchedVoice) utterance.voice = matchedVoice;
+                } else {
+                    const ptBrVoice = availableVoices.find(v => v.lang === 'pt-BR' || v.lang === 'pt_BR');
+                    if (ptBrVoice) utterance.voice = ptBrVoice;
+                }
+
+                if (onEndCallback) {
+                    utterance.onend = onEndCallback;
+                    utterance.onerror = onEndCallback;
+                }
+
+                window.speechSynthesis.speak(utterance);
+            } catch (err) {
+                console.error('Erro na síntese de voz:', err);
+                if (onEndCallback) onEndCallback();
+            }
+        }
+
+        function updateRateLabel() {
+            const val = parseFloat(document.getElementById('voice-rate').value);
+            let desc = 'Normal';
+            if (val <= 0.75) desc = 'Bem Calma';
+            else if (val <= 0.95) desc = 'Calma';
+            else desc = 'Rápida';
+            document.getElementById('rate-label').textContent = `${val.toFixed(2)}x (${desc})`;
+        }
+
+        function saveVoiceSettings() {
+            selectedVoiceURI = document.getElementById('voice-select').value;
+            speechRate = parseFloat(document.getElementById('voice-rate').value);
+            localStorage.setItem('vozamiga_voice_uri', selectedVoiceURI);
+            localStorage.setItem('vozamiga_speech_rate', speechRate.toString());
+        }
+
+        // 4. LÓGICA DA PRANCHA DE COMUNICAÇÃO (CAA)
+        function getCategoryClass(category) {
+            const map = {
+                'inicio': 'card-inicio',
+                'comida': 'card-comida',
+                'sentimentos': 'card-sentimentos',
+                'acoes': 'card-acoes',
+                'pessoas': 'card-pessoas'
+            };
+            return map[category] || 'card-inicio';
+        }
+
+        function filterCategory(category) {
+            currentCategory = category;
+
+            // Atualiza visual das abas
+            document.querySelectorAll('.cat-tab').forEach(tab => {
+                const tabCat = tab.getAttribute('data-cat');
+                if (tabCat === category) {
+                    tab.classList.add('ring-4', 'ring-slate-300', 'scale-102');
+                } else {
+                    tab.classList.remove('ring-4', 'ring-slate-300', 'scale-102');
+                }
+            });
+
+            renderCardsGrid();
+        }
+
+        function renderCardsGrid() {
+            const grid = document.getElementById('cards-grid');
+            grid.innerHTML = '';
+
+            const filtered = currentCategory === 'todos' 
+                ? allCards 
+                : allCards.filter(c => c.category === currentCategory);
+
+            filtered.forEach(card => {
+                const cardBtn = document.createElement('button');
+                cardBtn.type = 'button';
+                cardBtn.id = `grid-card-${card.id}`;
+                cardBtn.className = `aac-card ${getCategoryClass(card.category)} rounded-3xl p-4 sm:p-5 flex flex-col items-center justify-center gap-2.5 min-h-[140px] sm:min-h-[165px] cursor-pointer animate-soft-in focus:outline-none focus:ring-4 focus:ring-sky-300`;
+                
+                cardBtn.innerHTML = `
+                    <span class="text-5xl sm:text-6xl leading-none select-none" role="img" aria-hidden="true">${card.emoji}</span>
+                    <span class="text-lg sm:text-xl font-extrabold text-slate-800 text-center leading-tight tracking-wide">${card.word}</span>
+                `;
+
+                cardBtn.onclick = () => handleCardTap(card, cardBtn);
+                grid.appendChild(cardBtn);
+            });
+        }
+
+        function handleCardTap(card, element) {
+            // Destaque visual suave
+            element.classList.add('speaking-highlight');
+            setTimeout(() => element.classList.remove('speaking-highlight'), 550);
+
+            // Fala a palavra imediatamente
+            speakText(card.word);
+
+            // Adiciona na barra superior de frases (limite de 12 itens para manter organização)
+            if (sentenceList.length >= 12) {
+                showToast('A barra de frase está cheia. Toque em Limpar para começar outra.', '💬');
+                return;
+            }
+
+            sentenceList.push({ ...card, instanceId: Date.now() + Math.random() });
+            updateSentenceStrip();
+        }
+
+        function updateSentenceStrip() {
+            const strip = document.getElementById('sentence-strip');
+            const placeholder = document.getElementById('sentence-placeholder');
+
+            // Remove itens antigos mantendo o placeholder
+            Array.from(strip.children).forEach(child => {
+                if (child.id !== 'sentence-placeholder') {
+                    strip.removeChild(child);
+                }
+            });
+
+            if (sentenceList.length === 0) {
+                placeholder.classList.remove('hidden');
+                return;
+            }
+
+            placeholder.classList.add('hidden');
+
+            sentenceList.forEach((item, index) => {
+                const chip = document.createElement('div');
+                chip.id = `sentence-item-${index}`;
+                chip.className = `aac-card ${getCategoryClass(item.category)} shrink-0 rounded-2xl px-3.5 py-2 flex flex-col items-center justify-center min-w-[84px] sm:min-w-[96px] cursor-pointer animate-soft-in`;
+                chip.title = 'Toque para ouvir este cartão';
+                chip.innerHTML = `
+                    <span class="text-3xl sm:text-4xl leading-none">${item.emoji}</span>
+                    <span class="text-xs sm:text-sm font-extrabold text-slate-800 mt-1 text-center">${item.word}</span>
+                `;
+                chip.onclick = () => {
+                    chip.classList.add('speaking-highlight');
+                    setTimeout(() => chip.classList.remove('speaking-highlight'), 500);
+                    speakText(item.word);
+                };
+                strip.appendChild(chip);
+            });
+
+            // Rola suavemente para o final da barra
+            strip.scrollTo({ left: strip.scrollWidth, behavior: 'smooth' });
+        }
+
+        function removeLastWord() {
+            if (sentenceList.length === 0) return;
+            sentenceList.pop();
+            updateSentenceStrip();
+        }
+
+        function clearSentence() {
+            if (sentenceList.length === 0) return;
+            window.speechSynthesis.cancel();
+            sentenceList = [];
+            updateSentenceStrip();
+        }
+
+        // Lê a frase inteira palavra por palavra destacando cada cartão na barra superior
+        function speakFullSentence() {
+            if (sentenceList.length === 0) {
+                showToast('Escolha alguns cartões primeiro!', '👆');
+                speakText('Escolha alguns cartões primeiro');
+                return;
+            }
+
+            window.speechSynthesis.cancel();
+            let index = 0;
+
+            function speakNextItem() {
+                // Limpa destaques anteriores
+                document.querySelectorAll('#sentence-strip .speaking-highlight').forEach(el => {
+                    el.classList.remove('speaking-highlight');
+                });
+
+                if (index >= sentenceList.length) return;
+
+                const currentItem = sentenceList[index];
+                const domChip = document.getElementById(`sentence-item-${index}`);
+                if (domChip) {
+                    domChip.classList.add('speaking-highlight');
+                    domChip.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+                }
+
+                index++;
+                speakText(currentItem.word, () => {
+                    setTimeout(speakNextItem, 120);
+                });
+            }
+
+            speakNextItem();
+        }
+
+        // 5. ALTERNÂNCIA DE MODOS (COMUNICAR VS BRINCAR / JOGO)
+        function switchMode(mode) {
+            currentMode = mode;
+            window.speechSynthesis.cancel();
+
+            const viewAac = document.getElementById('view-aac');
+            const viewGame = document.getElementById('view-game');
+            const btnAac = document.getElementById('btn-mode-aac');
+            const btnGame = document.getElementById('btn-mode-game');
+
+            if (mode === 'aac') {
+                viewAac.classList.remove('hidden');
+                viewGame.classList.add('hidden');
+
+                btnAac.className = 'flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-extrabold text-base sm:text-lg transition-all bg-white text-sky-700 shadow-sm border border-sky-200';
+                btnGame.className = 'flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-extrabold text-base sm:text-lg transition-all text-slate-600 hover:text-slate-800';
+            } else {
+                viewAac.classList.add('hidden');
+                viewGame.classList.remove('hidden');
+
+                btnGame.className = 'flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-extrabold text-base sm:text-lg transition-all bg-white text-emerald-700 shadow-sm border border-emerald-200';
+                btnAac.className = 'flex items-center gap-2 px-4 py-2.5 sm:px-6 sm:py-3 rounded-xl font-extrabold text-base sm:text-lg transition-all text-slate-600 hover:text-slate-800';
+
+                startNewGameRound();
+            }
+        }
+
+        // 6. MODO JOGO EDUCATIVO ("DESCUBRA A PALAVRA / ONDE ESTÁ?")
+        function setGameDifficulty(numOptions) {
+            gameDifficulty = numOptions;
+            const btn3 = document.getElementById('diff-3');
+            const btn4 = document.getElementById('diff-4');
+
+            if (numOptions === 3) {
+                btn3.className = 'px-3.5 py-1.5 rounded-xl font-extrabold text-sm bg-white text-sky-700 shadow-sm border border-sky-200';
+                btn4.className = 'px-3.5 py-1.5 rounded-xl font-extrabold text-sm text-slate-600';
+            } else {
+                btn4.className = 'px-3.5 py-1.5 rounded-xl font-extrabold text-sm bg-white text-sky-700 shadow-sm border border-sky-200';
+                btn3.className = 'px-3.5 py-1.5 rounded-xl font-extrabold text-sm text-slate-600';
+            }
+
+            startNewGameRound();
+        }
+
+        function startNewGameRound() {
+            isRoundTransitioning = false;
+
+            // Embaralha todos os cartões disponíveis e escolhe N opções únicas
+            const shuffled = [...allCards].sort(() => Math.random() - 0.5);
+            currentGameOptions = shuffled.slice(0, gameDifficulty);
+
+            // Escolhe um dos cartões exibidos como o alvo correto
+            const randomIndex = Math.floor(Math.random() * currentGameOptions.length);
+            currentTargetCard = currentGameOptions[randomIndex];
+
+            // Atualiza textos na tela
+            const promptEl = document.getElementById('game-prompt-text');
+            promptEl.textContent = `Onde está... ${currentTargetCard.word}?`;
+
+            const feedbackEl = document.getElementById('game-feedback-text');
+            feedbackEl.textContent = 'Toque no cartão correspondente!';
+            feedbackEl.className = 'text-lg sm:text-2xl font-extrabold text-center text-slate-600 px-5 py-2.5 rounded-2xl bg-white/70 border border-slate-200';
+
+            // Ajusta colunas da grade conforme dificuldade
+            const grid = document.getElementById('game-options-grid');
+            grid.className = gameDifficulty === 4 
+                ? 'w-full grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-5 pb-6'
+                : 'w-full grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 pb-6';
+
+            grid.innerHTML = '';
+
+            currentGameOptions.forEach(card => {
+                const optionBtn = document.createElement('button');
+                optionBtn.type = 'button';
+                optionBtn.className = `aac-card ${getCategoryClass(card.category)} rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center gap-3 min-h-[175px] sm:min-h-[210px] cursor-pointer animate-soft-in focus:outline-none focus:ring-4 focus:ring-sky-300`;
+                
+                optionBtn.innerHTML = `
+                    <span class="text-6xl sm:text-7xl leading-none select-none">${card.emoji}</span>
+                    <span class="text-xl sm:text-2xl font-extrabold text-slate-800 text-center">${card.word}</span>
+                `;
+
+                optionBtn.onclick = () => handleGameAnswer(card, optionBtn);
+                grid.appendChild(optionBtn);
+            });
+
+            // Fala a pergunta com tom carinhoso
+            setTimeout(() => {
+                if (currentMode === 'game') {
+                    speakText(`Onde está... ${currentTargetCard.word}?`);
+                }
+            }, 250);
+        }
+
+        function repeatGamePrompt() {
+            if (!currentTargetCard) return;
+            speakText(`Onde está... ${currentTargetCard.word}?`);
+        }
+
+        function handleGameAnswer(selectedCard, btnElement) {
+            if (isRoundTransitioning) return;
+
+            const feedbackEl = document.getElementById('game-feedback-text');
+
+            if (selectedCard.id === currentTargetCard.id) {
+                // ACERTOU! Celebração suave e reforço positivo
+                isRoundTransitioning = true;
+                gameScore++;
+                updateGameScoreUI();
+                playGentleSuccessChime();
+
+                btnElement.classList.add('speaking-highlight', 'ring-4', 'ring-emerald-400');
+                feedbackEl.textContent = `🌟 Muito bem! Isso é ${currentTargetCard.word}!`;
+                feedbackEl.className = 'text-lg sm:text-2xl font-extrabold text-center text-emerald-800 bg-emerald-100 border-2 border-emerald-300 px-6 py-3 rounded-2xl animate-soft-in';
+
+                speakText(`Muito bem! Isso é ${currentTargetCard.word}!`, () => {
+                    setTimeout(() => {
+                        if (currentMode === 'game') startNewGameRound();
+                    }, 900);
+                });
+            } else {
+                // ERROU: Feedback gentil, sem punição e encorajador
+                btnElement.style.opacity = '0.65';
+                feedbackEl.textContent = `💛 Esse é ${selectedCard.word}. Tente novamente, procure por: ${currentTargetCard.word}`;
+                feedbackEl.className = 'text-base sm:text-xl font-extrabold text-center text-amber-900 bg-amber-100 border-2 border-amber-300 px-5 py-3 rounded-2xl animate-soft-in';
+
+                speakText(`Esse é ${selectedCard.word}. Tente novamente, procure por ${currentTargetCard.word}`);
+            }
+        }
+
+        function updateGameScoreUI() {
+            document.getElementById('game-score').textContent = gameScore;
+            const starsContainer = document.getElementById('stars-visual');
+            const visibleStars = Math.min(gameScore, 10);
+            starsContainer.textContent = '⭐'.repeat(visibleStars) + (gameScore > 10 ? '+' : '');
+        }
+
+        // Som agradável e suave de xilofone/harpa gerado via Web Audio API (sem arquivos externos)
+        function playGentleSuccessChime() {
+            try {
+                const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                if (!AudioCtx) return;
+                const ctx = new AudioCtx();
+
+                const notes = [523.25, 659.25, 783.99]; // Dó, Mi, Sol suaves
+                notes.forEach((freq, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, ctx.currentTime + idx * 0.12);
+
+                    gain.gain.setValueAtTime(0.001, ctx.currentTime + idx * 0.12);
+                    gain.gain.exponentialRampToValueAtTime(0.12, ctx.currentTime + idx * 0.12 + 0.04);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + idx * 0.12 + 0.45);
+
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+
+                    osc.start(ctx.currentTime + idx * 0.12);
+                    osc.stop(ctx.currentTime + idx * 0.12 + 0.5);
+                });
+            } catch (e) {
+                // Ignora silenciosamente se áudio não estiver liberado
+            }
+        }
+
+        // 7. MODO PAIS / TERAPEUTAS (Proteção por Clique Longo + Gestão de Cartões)
+        function setupParentHoldButton() {
+            const btn = document.getElementById('btn-parent-gate');
+            let holdTimer = null;
+            let progressInterval = null;
+            let startTime = 0;
+            const HOLD_DURATION = 1000; // 1 segundo segurando
+
+            const startHold = (e) => {
+                if (e.type === 'mousedown' && e.button !== 0) return;
+                startTime = Date.now();
+
+                progressInterval = setInterval(() => {
+                    const elapsed = Date.now() - startTime;
+                    const pct = Math.min((elapsed / HOLD_DURATION) * 100, 100);
+                    btn.style.setProperty('--hold-progress', `${pct}%`);
+                }, 30);
+
+                holdTimer = setTimeout(() => {
+                    cancelHold();
+                    openParentModal();
+                }, HOLD_DURATION);
+            };
+
+            const cancelHold = () => {
+                clearTimeout(holdTimer);
+                clearInterval(progressInterval);
+                btn.style.setProperty('--hold-progress', '0%');
+            };
+
+            btn.addEventListener('mousedown', startHold);
+            btn.addEventListener('touchstart', startHold, { passive: true });
+            btn.addEventListener('mouseup', cancelHold);
+            btn.addEventListener('mouseleave', cancelHold);
+            btn.addEventListener('touchend', cancelHold);
+            btn.addEventListener('touchcancel', cancelHold);
+
+            // Também informa caso a pessoa dê apenas um toque rápido
+            btn.addEventListener('click', () => {
+                const modal = document.getElementById('parent-modal');
+                if (modal.classList.contains('hidden')) {
+                    showToast('Segure o botão "Ajustes" por 1 segundo para abrir.', '🔒');
+                }
+            });
+        }
+
+        function openParentModal() {
+            renderCustomCardsList();
+            const modal = document.getElementById('parent-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeParentModal() {
+            const modal = document.getElementById('parent-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function renderEmojiSuggestions() {
+            const container = document.getElementById('emoji-suggestions');
+            container.innerHTML = '';
+            SUGGESTED_EMOJIS.forEach(emoji => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'w-10 h-10 rounded-xl bg-white border border-slate-200 hover:bg-sky-50 text-xl flex items-center justify-center transition-transform active:scale-90';
+                btn.textContent = emoji;
+                btn.onclick = () => {
+                    document.getElementById('new-card-emoji').value = emoji;
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function handleAddCard(event) {
+            event.preventDefault();
+            const wordInput = document.getElementById('new-card-word');
+            const emojiInput = document.getElementById('new-card-emoji');
+            const categoryInput = document.getElementById('new-card-category');
+
+            const word = wordInput.value.trim();
+            const emoji = emojiInput.value.trim() || '⭐';
+            const category = categoryInput.value;
+
+            if (!word) return;
+
+            const newCard = {
+                id: 'custom-' + Date.now(),
+                word: word,
+                emoji: emoji,
+                category: category,
+                isCustom: true
+            };
+
+            allCards.push(newCard);
+            saveCustomCardsToStorage();
+
+            // Limpa formulário e atualiza interfaces
+            wordInput.value = '';
+            renderCustomCardsList();
+            renderCardsGrid();
+            showToast(`Cartão "${word}" adicionado!`, '✅');
+        }
+
+        function renderCustomCardsList() {
+            const listEl = document.getElementById('custom-cards-list');
+            const customCards = allCards.filter(c => c.isCustom);
+
+            if (customCards.length === 0) {
+                listEl.innerHTML = '<p class="text-sm text-slate-400 font-semibold italic py-2">Nenhum cartão personalizado criado ainda.</p>';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            customCards.forEach(card => {
+                const row = document.createElement('div');
+                row.className = 'flex items-center justify-between bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200';
+                row.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="text-2xl">${card.emoji}</span>
+                        <span class="font-extrabold text-slate-700">${card.word}</span>
+                    </div>
+                    <button type="button" onclick="deleteCustomCard('${card.id}')" 
+                        class="px-3 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs transition-colors">
+                        Remover
+                    </button>
+                `;
+                listEl.appendChild(row);
+            });
+        }
+
+        function deleteCustomCard(cardId) {
+            allCards = allCards.filter(c => c.id !== cardId);
+            saveCustomCardsToStorage();
+            renderCustomCardsList();
+            renderCardsGrid();
+            showToast('Cartão removido.', '🗑️');
+        }
+
+        // 8. UTILITÁRIO DE NOTIFICAÇÃO SUAVE (TOAST)
+        let toastTimeout = null;
+        function showToast(message, icon = '✨') {
+            const container = document.getElementById('toast-container');
+            document.getElementById('toast-text').textContent = message;
+            document.getElementById('toast-icon').textContent = icon;
+
+            container.classList.remove('opacity-0', 'translate-y-4');
+            container.classList.add('opacity-100', 'translate-y-0');
+
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                container.classList.remove('opacity-100', 'translate-y-0');
+                container.classList.add('opacity-0', 'translate-y-4');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
